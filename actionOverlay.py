@@ -37,6 +37,10 @@ class DragLabel(QLabel):
         self.setText("💠")
         self.dragging = False
 
+    def mouseDoubleClickEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            QApplication.quit()
+
 
 class OverlayButton(QWidget):
     def __init__(self):
@@ -48,7 +52,7 @@ class OverlayButton(QWidget):
 
         self.drag_label = DragLabel(self)
 
-        self.main_button = QPushButton("🔺", self)
+        self.main_button = QPushButton("○", self)
         self.main_button.setFixedSize(60, 60)
         self.main_button.setFont(QFont("Arial", 32))
         self.main_button.clicked.connect(self.toggle_buttons)
@@ -110,9 +114,9 @@ class OverlayButton(QWidget):
             btn.setVisible(not is_visible)
 
         if is_visible:
-            self.main_button.setText("🔺")
+            self.main_button.setText("○")
         else:
-            self.main_button.setText("🔻")
+            self.main_button.setText("◌")
 
     def trigger_shortcut(self, key):
         pyautogui.keyDown('alt')
