@@ -8,6 +8,5 @@
 
 ### Usage
 - drag to move overlay
-- doubleclick to close overlay
 - ○  open actions
 - ◌  close actions
