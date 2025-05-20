@@ -122,7 +122,15 @@ class DrawingWindow(QWidget):
 
         self.drawing_label.showEvent = self.update_drawing_surface
 
-        self.showEvent = self.set_fullscreen_on_show
+        self.showEvent = self.set_available_geometry_on_show
+
+    def set_available_geometry_on_show(self, event):
+        cursor_pos = QCursor.pos()
+        screen = QApplication.screenAt(cursor_pos)
+        if screen:
+            geometry = screen.availableGeometry()  # This excludes the taskbar area
+            self.setGeometry(geometry)
+        event.accept()
 
     def set_fullscreen_on_show(self, event):
         cursor_pos = QCursor.pos()
