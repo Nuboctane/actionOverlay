@@ -2,6 +2,8 @@ import sys
 import pyautogui
 from PyQt5.QtCore import Qt, QPoint, QRect
 from PyQt5.QtWidgets import QSlider
+import datetime
+from PyQt5.QtWidgets import QFileDialog
 from PyQt5.QtWidgets import (QApplication, QWidget, QPushButton, QVBoxLayout, 
                             QHBoxLayout, QLabel, QSizePolicy)
 from PyQt5.QtGui import (QCursor, QFont, QPainter, QPen, QColor, QPixmap, 
@@ -198,9 +200,24 @@ class DrawingWindow(QWidget):
             }
         """)
         self.clear_button.clicked.connect(self.clear_drawing)
+        self.print_screen_button = QPushButton("⎙", self)
+        self.print_screen_button.setFixedSize(30, 20)
+        self.print_screen_button.setStyleSheet("""
+            QPushButton {
+                background-color: transparent;
+                color: white;
+                border: none;
+            }
+            QPushButton:hover {
+                background-color: #555;
+                border-radius: 2px;
+            }
+        """)
+        self.print_screen_button.setToolTip("Print Screen")
+        self.print_screen_button.clicked.connect(self.take_screenshot)
+        title_layout.addWidget(self.print_screen_button)
         title_layout.addWidget(self.clear_button)
         title_layout.addWidget(self.close_button)
-
         layout.addWidget(self.title_bar)
 
         self.drawing_label = QLabel(self)
@@ -220,6 +237,9 @@ class DrawingWindow(QWidget):
         self.showEvent = self.set_available_geometry_on_show
 
         self.eraser_mode = False
+
+    def take_screenshot(self):
+        pyautogui.hotkey('win', 'shift', 's')
 
     def set_eraser_mode(self):
         if self.eraser_button.isChecked():
@@ -410,6 +430,27 @@ class OverlayButton(QWidget):
             self.shortcut_buttons.append(btn)
             self.shortcuts_layout.addWidget(btn)
 
+        self.print_screen_button = QPushButton("⎙ print screen", self)
+        self.print_screen_button.setFixedSize(90, 50)
+        self.print_screen_button.setStyleSheet("""
+            QPushButton {
+                background-color: #286;
+                padding: 5px;
+                color: #fff;
+                border: 1px solid #063;
+                border-radius: 10px;
+            }
+            QPushButton:hover {
+                background-color: #3a8;
+            }
+            QPushButton:pressed {
+                background-color: #174;
+            }
+        """)
+        self.print_screen_button.clicked.connect(self.take_screenshot)
+        self.print_screen_button.hide()
+        self.shortcuts_layout.addWidget(self.print_screen_button)
+
         self.draw_button = QPushButton("✎ draw", self)
         self.draw_button.setFixedSize(90, 50)
         self.draw_button.setStyleSheet("""
@@ -465,10 +506,14 @@ class OverlayButton(QWidget):
         main_layout.addLayout(control_layout)
         main_layout.addLayout(self.shortcuts_layout)
 
+    def take_screenshot(self):
+        pyautogui.hotkey('win', 'shift', 's')
+
     def toggle_buttons(self):
         visible = self.shortcut_buttons[0].isVisible()
         for btn in self.shortcut_buttons:
             btn.setVisible(not visible)
+        self.print_screen_button.setVisible(not visible)
         self.draw_button.setVisible(not visible)
         self.quit_button.setVisible(not visible)
         self.main_button.setText("○" if visible else "◌")
