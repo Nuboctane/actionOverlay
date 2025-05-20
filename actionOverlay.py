@@ -1,6 +1,7 @@
 import sys
 import pyautogui
 from PyQt5.QtCore import Qt, QPoint, QRect
+from PyQt5.QtWidgets import QSlider
 from PyQt5.QtWidgets import (QApplication, QWidget, QPushButton, QVBoxLayout, 
                             QHBoxLayout, QLabel, QSizePolicy)
 from PyQt5.QtGui import (QCursor, QFont, QPainter, QPen, QColor, QPixmap, 
@@ -71,6 +72,101 @@ class DrawingWindow(QWidget):
         self.title_label.setStyleSheet("color: white;")
         title_layout.addWidget(self.title_label)
 
+        # Add stretch before eraser and color buttons (left side)
+        title_layout.addStretch()
+
+        # Eraser button (left of color buttons)
+        self.eraser_button = QPushButton("⎚")
+        self.eraser_button.setFixedSize(24, 24)
+        self.eraser_button.setCheckable(True)
+        self.eraser_button.setToolTip("Eraser")
+        self.eraser_button.setStyleSheet("""
+            QPushButton {
+                background-color: #eee;
+                color: #222;
+                border: 2px solid #222;
+                border-radius: 4px;
+                font-size: 16px;
+            }
+            QPushButton:checked {
+                background-color: #fff;
+                border: 2px solid #2196F3;
+                color: #2196F3;
+            }
+        """)
+        self.eraser_button.clicked.connect(self.set_eraser_mode)
+        title_layout.addWidget(self.eraser_button)
+
+        # Color buttons in the center
+        self.color_buttons = []
+        color_defs = [
+            ("#FFD600", "yellow"),
+            ("#000000", "black"),
+            ("#FFFFFF", "white"),
+            ("#888888", "gray"),
+            ("#2196F3", "blue"),
+            ("#F44336", "red"),
+            ("#E91E63", "pink"),
+            ("#9C27B0", "purple"),
+            ("#4CAF50", "green"),
+            ("#00BCD4", "cyan"),
+        ]
+        self.pen = QPen(QColor(255, 255, 255), 3, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
+
+        def make_color_btn(color, tooltip):
+            btn = QPushButton()
+            btn.setFixedSize(22, 22)
+            btn.setStyleSheet(f"""
+                QPushButton {{
+                    background-color: {color};
+                    border: 2px solid #222;
+                    border-radius: 4px;
+                }}
+                QPushButton:checked {{
+                    border: 2px solid #fff;
+                }}
+            """)
+            btn.setToolTip(tooltip)
+            btn.setCheckable(True)
+            btn.clicked.connect(lambda _, c=color: self.set_pen_color(c))
+            return btn
+
+        self.color_btn_group = []
+        for color, name in color_defs:
+            btn = make_color_btn(color, name)
+            self.color_buttons.append(btn)
+            title_layout.addWidget(btn)
+            self.color_btn_group.append(btn)
+        # Set default checked (white)
+        self.color_btn_group[2].setChecked(True)
+
+        # Add thickness slider (right of color buttons)
+        self.thickness_slider = QSlider(Qt.Horizontal)
+        self.thickness_slider.setMinimum(1)
+        self.thickness_slider.setMaximum(20)
+        self.thickness_slider.setValue(3)
+        self.thickness_slider.setFixedWidth(80)
+        self.thickness_slider.setToolTip("Pen thickness")
+        self.thickness_slider.setStyleSheet("""
+            QSlider::groove:horizontal {
+                border: 1px solid #444;
+                height: 6px;
+                background: #222;
+                margin: 0px;
+                border-radius: 3px;
+            }
+            QSlider::handle:horizontal {
+                background: #fff;
+                border: 1px solid #2196F3;
+                width: 14px;
+                margin: -4px 0;
+                border-radius: 7px;
+            }
+        """)
+        self.thickness_slider.valueChanged.connect(self.set_pen_thickness)
+        title_layout.addWidget(self.thickness_slider)
+
+        # Add stretch after thickness slider (right side)
         title_layout.addStretch()
 
         self.close_button = QPushButton("✕")
@@ -115,7 +211,6 @@ class DrawingWindow(QWidget):
         self.pixmap = QPixmap(1, 1)
         self.pixmap.fill(Qt.transparent)
         self.last_point = None
-        self.pen = QPen(QColor(255, 255, 255), 3, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
 
         self.dragging = False
         self.offset = QPoint()
@@ -123,6 +218,50 @@ class DrawingWindow(QWidget):
         self.drawing_label.showEvent = self.update_drawing_surface
 
         self.showEvent = self.set_available_geometry_on_show
+
+        self.eraser_mode = False
+
+    def set_eraser_mode(self):
+        if self.eraser_button.isChecked():
+            self.eraser_mode = True
+            for btn in self.color_btn_group:
+                btn.setChecked(False)
+            self.pen.setColor(Qt.transparent)
+            self.pen.setWidth(self.thickness_slider.value())
+            # Removed: self.pen.setCompositionMode(QPainter.CompositionMode_Clear)
+        else:
+            self.eraser_mode = False
+            # Restore last selected color or default to white
+            checked = [btn for btn in self.color_btn_group if btn.isChecked()]
+            if checked:
+                idx = self.color_btn_group.index(checked[0])
+                color = self.color_buttons[idx].palette().button().color()
+                self.pen.setColor(color)
+            else:
+                self.pen.setColor(QColor("#FFFFFF"))
+            self.pen.setWidth(self.thickness_slider.value())
+
+    def set_pen_color(self, color):
+        self.eraser_button.setChecked(False)
+        self.eraser_mode = False
+        for btn in self.color_btn_group:
+            btn.setChecked(False)
+        sender = self.sender()
+        if sender:
+            sender.setChecked(True)
+        self.pen.setColor(QColor(color))
+        self.pen.setWidth(self.thickness_slider.value())
+
+    def set_pen_thickness(self, value):
+        self.pen.setWidth(value)
+
+    def set_pen_color(self, color):
+        for btn in self.color_btn_group:
+            btn.setChecked(False)
+        sender = self.sender()
+        if sender:
+            sender.setChecked(True)
+        self.pen.setColor(QColor(color))
 
     def set_available_geometry_on_show(self, event):
         cursor_pos = QCursor.pos()
@@ -178,7 +317,12 @@ class DrawingWindow(QWidget):
             
         painter = QPainter(self.pixmap)
         if painter.isActive():
-            painter.setPen(self.pen)
+            if self.eraser_mode:
+                painter.setCompositionMode(QPainter.CompositionMode_Clear)
+                eraser_pen = QPen(Qt.transparent, self.thickness_slider.value(), Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
+                painter.setPen(eraser_pen)
+            else:
+                painter.setPen(self.pen)
             painter.drawLine(from_point, to_point)
             painter.end()
             self.drawing_label.setPixmap(self.pixmap)
