@@ -74,10 +74,8 @@ class DrawingWindow(QWidget):
         self.title_label.setStyleSheet("color: white;")
         title_layout.addWidget(self.title_label)
 
-        # Add stretch before eraser and color buttons (left side)
         title_layout.addStretch()
 
-        # Eraser button (left of color buttons)
         self.eraser_button = QPushButton("⎚")
         self.eraser_button.setFixedSize(24, 24)
         self.eraser_button.setCheckable(True)
@@ -99,7 +97,6 @@ class DrawingWindow(QWidget):
         self.eraser_button.clicked.connect(self.set_eraser_mode)
         title_layout.addWidget(self.eraser_button)
 
-        # Color buttons in the center
         self.color_buttons = []
         color_defs = [
             ("#FFD600", "yellow"),
@@ -139,10 +136,8 @@ class DrawingWindow(QWidget):
             self.color_buttons.append(btn)
             title_layout.addWidget(btn)
             self.color_btn_group.append(btn)
-        # Set default checked (white)
         self.color_btn_group[2].setChecked(True)
 
-        # Add thickness slider (right of color buttons)
         self.thickness_slider = QSlider(Qt.Horizontal)
         self.thickness_slider.setMinimum(1)
         self.thickness_slider.setMaximum(20)
@@ -168,7 +163,6 @@ class DrawingWindow(QWidget):
         self.thickness_slider.valueChanged.connect(self.set_pen_thickness)
         title_layout.addWidget(self.thickness_slider)
 
-        # Add stretch after thickness slider (right side)
         title_layout.addStretch()
 
         self.close_button = QPushButton("✕")
@@ -248,10 +242,8 @@ class DrawingWindow(QWidget):
                 btn.setChecked(False)
             self.pen.setColor(Qt.transparent)
             self.pen.setWidth(self.thickness_slider.value())
-            # Removed: self.pen.setCompositionMode(QPainter.CompositionMode_Clear)
         else:
             self.eraser_mode = False
-            # Restore last selected color or default to white
             checked = [btn for btn in self.color_btn_group if btn.isChecked()]
             if checked:
                 idx = self.color_btn_group.index(checked[0])
@@ -287,7 +279,7 @@ class DrawingWindow(QWidget):
         cursor_pos = QCursor.pos()
         screen = QApplication.screenAt(cursor_pos)
         if screen:
-            geometry = screen.availableGeometry()  # This excludes the taskbar area
+            geometry = screen.availableGeometry()
             self.setGeometry(geometry)
         event.accept()
 
