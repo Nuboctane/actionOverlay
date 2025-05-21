@@ -10,6 +10,5 @@
 
 
 ### Usage
-- drag to move overlay
-- ○  open actions
-- ◌  close actions
+- drag  ○  button to move overlay
+- ○  open/hide overlay
