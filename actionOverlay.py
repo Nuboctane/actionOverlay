@@ -195,9 +195,10 @@ class DrawingWindow(QWidget):
         self.close_button.setFixedSize(20, 20)
         self.close_button.setStyleSheet("""
             QPushButton {
-                background-color: transparent;
                 color: white;
-                border: none;
+                border: 1px solid #000;
+                background-color: #ff0000;
+                border-radius: 2px;
             }
             QPushButton:hover {
                 background-color: #555;
@@ -206,13 +207,14 @@ class DrawingWindow(QWidget):
         """)
         self.close_button.clicked.connect(self.close)
 
-        self.clear_button = QPushButton("clear")
-        self.clear_button.setFixedSize(30, 20)
+        self.clear_button = QPushButton("Clear")
+        self.clear_button.setFixedSize(60, 20)
         self.clear_button.setStyleSheet("""
             QPushButton {
-                background-color: transparent;
                 color: white;
-                border: none;
+                border: 1px solid #000;
+                background-color: #f47c36;
+                border-radius: 2px;
             }
             QPushButton:hover {
                 background-color: #555;
@@ -220,13 +222,15 @@ class DrawingWindow(QWidget):
             }
         """)
         self.clear_button.clicked.connect(self.clear_drawing)
-        self.print_screen_button = QPushButton("⎙", self)
-        self.print_screen_button.setFixedSize(30, 20)
+
+        self.print_screen_button = QPushButton("⌜⌟ Print screen", self)
+        self.print_screen_button.setFixedSize(90, 20)
         self.print_screen_button.setStyleSheet("""
             QPushButton {
-                background-color: transparent;
                 color: white;
-                border: none;
+                border: 1px solid #000;
+                background-color: #2196F3;
+                border-radius: 2px;
             }
             QPushButton:hover {
                 background-color: #555;
@@ -235,7 +239,26 @@ class DrawingWindow(QWidget):
         """)
         self.print_screen_button.setToolTip("Print Screen")
         self.print_screen_button.clicked.connect(self.take_screenshot)
+
+        self.download_button = QPushButton("Download", self)
+        self.download_button.setFixedSize(90, 20)
+        self.download_button.setStyleSheet("""
+            QPushButton {
+                color: white;
+                border: 1px solid #000;
+                background-color: #4CAF50;
+                border-radius: 2px;
+            }
+            QPushButton:hover {
+                background-color: #555;
+                border-radius: 2px;
+            }
+        """)
+        self.download_button.setToolTip("Download the drawing as PNG")
+        self.download_button.clicked.connect(self.save_as_png)
+
         title_layout.addWidget(self.print_screen_button)
+        title_layout.addWidget(self.download_button)
         title_layout.addWidget(self.clear_button)
         title_layout.addWidget(self.close_button)
         layout.addWidget(self.title_bar)
@@ -259,14 +282,21 @@ class DrawingWindow(QWidget):
         self.eraser_mode = False
         self.bucket_mode = False
 
+    def save_as_png(self):
+        if self.pixmap.isNull():
+            return
+        file_path, _ = QFileDialog.getSaveFileName(self, "Save Drawing as PNG", "drawing.png", "PNG Files (*.png)")
+        if file_path:
+            from PyQt5.QtGui import QImage
+            image = self.pixmap.toImage().convertToFormat(QImage.Format_ARGB32)
+            image.save(file_path, "PNG")
+
     def take_screenshot(self):
         pyautogui.hotkey('win', 'shift', 's')
 
     def set_eraser_mode(self):
         if self.eraser_button.isChecked():
             self.eraser_mode = True
-            self.bucket_mode = False
-            self.bucket_button.setChecked(False)
             for btn in self.color_btn_group:
                 btn.setChecked(False)
             self.pen.setColor(Qt.transparent)
@@ -285,16 +315,12 @@ class DrawingWindow(QWidget):
     def set_bucket_mode(self):
         if self.bucket_button.isChecked():
             self.bucket_mode = True
-            self.eraser_mode = False
-            self.eraser_button.setChecked(False)
         else:
             self.bucket_mode = False
 
     def set_pen_color(self, color):
         self.eraser_button.setChecked(False)
-        self.bucket_button.setChecked(False)
         self.eraser_mode = False
-        self.bucket_mode = False
         for btn in self.color_btn_group:
             btn.setChecked(False)
         sender = self.sender()
@@ -400,29 +426,34 @@ class DrawingWindow(QWidget):
             self.drawing_label.setPixmap(self.pixmap)
 
     def bucket_fill(self, pos):
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+        try:
+            x, y = int(pos.x()), int(pos.y())
+            if x < 0 or y < 0 or x >= self.pixmap.width() or y >= self.pixmap.height():
+                return
 
-        x, y = int(pos.x()), int(pos.y())
-        if x < 0 or y < 0 or x >= self.pixmap.width() or y >= self.pixmap.height():
-            return
+            image = self.pixmap.toImage()
+            target_color = image.pixelColor(x, y)
 
-        image = self.pixmap.toImage()
-        target_color = image.pixelColor(x, y)
-        fill_color = self.pen.color()
+            if self.eraser_mode:
+                fill_color = QColor(0, 0, 0, 0)
+            else:
+                fill_color = self.pen.color()
 
-        if target_color == fill_color:
-            return
+            if target_color == fill_color:
+                return
 
+            self.perform_fill(image, x, y, target_color, fill_color)
+            self.pixmap.convertFromImage(image)
+            self.drawing_label.setPixmap(self.pixmap)
+        finally:
+            QApplication.restoreOverrideCursor()
+
+    def perform_fill(self, image, x, y, target_color, fill_color):
         width = image.width()
         height = image.height()
-
         stack = [(x, y)]
         visited = set()
-        filled_pixels = 0
-        area = width * height
-        FILL_PIXEL_LIMIT = max(10000, int(area))
-
-        notify_threshold = int(FILL_PIXEL_LIMIT * 0.2)
-        notified = False
 
         while stack:
             cx, cy = stack.pop()
@@ -430,22 +461,10 @@ class DrawingWindow(QWidget):
                 continue
             if cx < 0 or cy < 0 or cx >= width or cy >= height:
                 continue
-            current_color = image.pixelColor(cx, cy)
-            if current_color != target_color:
+            if image.pixelColor(cx, cy) != target_color:
                 continue
             image.setPixelColor(cx, cy, fill_color)
             visited.add((cx, cy))
-            filled_pixels += 1
-            if not notified and filled_pixels > notify_threshold:
-                notification = Notify()
-                notification.icon = "app_icon.ico"
-                notification.application_name = "actionOverlay"
-                notification.title = "bucket filling"
-                notification.message = "Thats a lot of pixels! Hold on..."
-                notification.send()
-                notified = True
-            if filled_pixels > FILL_PIXEL_LIMIT:
-                break
             stack.extend([
                 (cx + 1, cy),
                 (cx - 1, cy),
@@ -453,8 +472,6 @@ class DrawingWindow(QWidget):
                 (cx, cy - 1)
             ])
 
-        self.pixmap.convertFromImage(image)
-        self.drawing_label.setPixmap(self.pixmap)
 
 class ApplicationManager:
     @staticmethod
