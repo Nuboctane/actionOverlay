@@ -1,4 +1,5 @@
 import sys
+import os
 import pyautogui
 import win32gui
 import win32con
@@ -7,10 +8,11 @@ from PyQt5.QtWidgets import QSlider
 import datetime
 from PyQt5.QtWidgets import QFileDialog
 from PyQt5.QtCore import QTimer
+from notifypy import Notify
 from PyQt5.QtWidgets import (QApplication, QWidget, QPushButton, QVBoxLayout, 
                             QHBoxLayout, QLabel, QSizePolicy, QSizeGrip)
 from PyQt5.QtGui import (QCursor, QFont, QPainter, QPen, QColor, QPixmap, 
-                         QMouseEvent, QPaintEvent)
+                         QMouseEvent, QPaintEvent, QIcon)
 
 class DraggableButton(QPushButton):
     def __init__(self, text, parent):
@@ -398,6 +400,7 @@ class DrawingWindow(QWidget):
             self.drawing_label.setPixmap(self.pixmap)
 
     def bucket_fill(self, pos):
+
         x, y = int(pos.x()), int(pos.y())
         if x < 0 or y < 0 or x >= self.pixmap.width() or y >= self.pixmap.height():
             return
@@ -416,7 +419,10 @@ class DrawingWindow(QWidget):
         visited = set()
         filled_pixels = 0
         area = width * height
-        FILL_PIXEL_LIMIT = max(10000, int(area * 0.15))
+        FILL_PIXEL_LIMIT = max(10000, int(area))
+
+        notify_threshold = int(FILL_PIXEL_LIMIT * 0.2)
+        notified = False
 
         while stack:
             cx, cy = stack.pop()
@@ -430,6 +436,14 @@ class DrawingWindow(QWidget):
             image.setPixelColor(cx, cy, fill_color)
             visited.add((cx, cy))
             filled_pixels += 1
+            if not notified and filled_pixels > notify_threshold:
+                notification = Notify()
+                notification.icon = "app_icon.ico"
+                notification.application_name = "actionOverlay"
+                notification.title = "bucket filling"
+                notification.message = "Thats a lot of pixels! Hold on..."
+                notification.send()
+                notified = True
             if filled_pixels > FILL_PIXEL_LIMIT:
                 break
             stack.extend([
