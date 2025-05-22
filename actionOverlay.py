@@ -748,41 +748,62 @@ class OverlayButton(QWidget):
             label.setFixedSize(180, 50)
             window_layout.addWidget(label)
             
-            bring_btn = QPushButton("⇲")
-            bring_btn.setFixedSize(50, 50)
-            bring_btn.setStyleSheet("""
-                QPushButton {
-                    background-color: #286;
-                    color: white;
-                    border: none;
-                    border-radius: 5px;
-                }
-                QPushButton:hover {
-                    background-color: #3a8;
-                }
-            """)
-            bring_btn.clicked.connect(lambda _, h=hwnd: (ApplicationManager.bring_to_current_monitor(h), self.toggle_apps_list()))
-            window_layout.addWidget(bring_btn)
+            if "Task Manager" not in title:
+                bring_btn = QPushButton("⇲")
+                bring_btn.setFixedSize(50, 50)
+                bring_btn.setStyleSheet("""
+                    QPushButton {
+                        background-color: #286;
+                        color: white;
+                        border: none;
+                        border-radius: 5px;
+                    }
+                    QPushButton:hover {
+                        background-color: #3a8;
+                    }
+                """)
+                bring_btn.clicked.connect(lambda _, h=hwnd: (ApplicationManager.bring_to_current_monitor(h), self.toggle_apps_list()))
+                window_layout.addWidget(bring_btn)
+
             
-            close_btn = QPushButton("✕")
-            close_btn.setFixedSize(50, 50)
-            close_btn.setStyleSheet("""
-                QPushButton {
-                    background-color: #922;
-                    color: white;
-                    border: none;
-                    border-radius: 5px;
-                }
-                QPushButton:hover {
-                    background-color: #b33;
-                }
-            """)
-            def bring_and_close(h):
-                ApplicationManager.bring_to_current_monitor(h)
-                QTimer.singleShot(300, lambda: ApplicationManager.close_window(h))
-                self.toggle_apps_list()
-            close_btn.clicked.connect(lambda _, h=hwnd: bring_and_close(h))
-            window_layout.addWidget(close_btn)
+            if "Task Manager" not in title:
+                close_btn = QPushButton("✕")
+                close_btn.setFixedSize(50, 50)
+                close_btn.setStyleSheet("""
+                    QPushButton {
+                        background-color: #922;
+                        color: white;
+                        border: none;
+                        border-radius: 5px;
+                    }
+                    QPushButton:hover {
+                        background-color: #b33;
+                    }
+                """)
+
+                def bring_and_close(h):
+                    ApplicationManager.bring_to_current_monitor(h)
+                    QTimer.singleShot(300, lambda: ApplicationManager.close_window(h))
+                    self.toggle_apps_list()
+                close_btn.clicked.connect(lambda _, h=hwnd: bring_and_close(h))
+                window_layout.addWidget(close_btn)
+            else:
+                disabled_btn = QPushButton("No permission")
+                disabled_btn.setFixedSize(110, 50)
+                disabled_btn.setStyleSheet("""
+                    QPushButton {
+                        background-color: #2c2c2c;
+                        padding: 0px;
+                        color: #807d7d;
+                        border: 1px solid #444;
+                        border-radius: 10px;
+                        text-align: center;
+                    }
+                    QPushButton:hover {
+                        background-color: #2c2c2c;
+                    }
+                """)
+                window_layout.addWidget(disabled_btn)
             
             self.apps_list_layout.addLayout(window_layout)
         self.adjustSize()
