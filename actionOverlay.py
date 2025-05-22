@@ -410,7 +410,9 @@ class ApplicationManager:
             screen_geometry = screen.geometry()
             x = screen_geometry.x() + (screen_geometry.width() - window_width) // 2
             y = screen_geometry.y() + (screen_geometry.height() - window_height) // 2
-            
+
+            # Restore window if minimized
+            win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
             win32gui.SetWindowPos(hwnd, win32con.HWND_TOP, x, y, window_width, window_height, win32con.SWP_SHOWWINDOW)
             win32gui.SetForegroundWindow(hwnd)
     
