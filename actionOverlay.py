@@ -550,7 +550,7 @@ class OverlayButton(QWidget):
             self.shortcut_buttons.append(btn)
             self.shortcuts_layout.addWidget(btn)
 
-        self.apps_button = QPushButton("applications", self)
+        self.apps_button = QPushButton("apps", self)
         self.apps_button.setFixedSize(90, 50)
         self.apps_button.setStyleSheet(dark_button_style)
         self.apps_button.clicked.connect(self.toggle_apps_list)
