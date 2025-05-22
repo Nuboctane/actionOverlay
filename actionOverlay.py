@@ -79,6 +79,27 @@ class DrawingWindow(QWidget):
 
         title_layout.addStretch()
 
+        self.bucket_button = QPushButton("🪣")
+        self.bucket_button.setFixedSize(24, 24)
+        self.bucket_button.setCheckable(True)
+        self.bucket_button.setToolTip("Fill Bucket")
+        self.bucket_button.setStyleSheet("""
+            QPushButton {
+                background-color: #eee;
+                color: #222;
+                border: 2px solid #222;
+                border-radius: 4px;
+                font-size: 16px;
+            }
+            QPushButton:checked {
+                background-color: #fff;
+                border: 2px solid #FFD600;
+                color: #FFD600;
+            }
+        """)
+        self.bucket_button.clicked.connect(self.set_bucket_mode)
+        title_layout.addWidget(self.bucket_button)
+
         self.eraser_button = QPushButton("⎚")
         self.eraser_button.setFixedSize(24, 24)
         self.eraser_button.setCheckable(True)
@@ -234,6 +255,7 @@ class DrawingWindow(QWidget):
         self.showEvent = self.set_available_geometry_on_show
 
         self.eraser_mode = False
+        self.bucket_mode = False
 
     def take_screenshot(self):
         pyautogui.hotkey('win', 'shift', 's')
@@ -241,6 +263,8 @@ class DrawingWindow(QWidget):
     def set_eraser_mode(self):
         if self.eraser_button.isChecked():
             self.eraser_mode = True
+            self.bucket_mode = False
+            self.bucket_button.setChecked(False)
             for btn in self.color_btn_group:
                 btn.setChecked(False)
             self.pen.setColor(Qt.transparent)
@@ -256,9 +280,19 @@ class DrawingWindow(QWidget):
                 self.pen.setColor(QColor("#FFFFFF"))
             self.pen.setWidth(self.thickness_slider.value())
 
+    def set_bucket_mode(self):
+        if self.bucket_button.isChecked():
+            self.bucket_mode = True
+            self.eraser_mode = False
+            self.eraser_button.setChecked(False)
+        else:
+            self.bucket_mode = False
+
     def set_pen_color(self, color):
         self.eraser_button.setChecked(False)
+        self.bucket_button.setChecked(False)
         self.eraser_mode = False
+        self.bucket_mode = False
         for btn in self.color_btn_group:
             btn.setChecked(False)
         sender = self.sender()
@@ -269,14 +303,6 @@ class DrawingWindow(QWidget):
 
     def set_pen_thickness(self, value):
         self.pen.setWidth(value)
-
-    def set_pen_color(self, color):
-        for btn in self.color_btn_group:
-            btn.setChecked(False)
-        sender = self.sender()
-        if sender:
-            sender.setChecked(True)
-        self.pen.setColor(QColor(color))
 
     def set_available_geometry_on_show(self, event):
         cursor_pos = QCursor.pos()
@@ -341,15 +367,18 @@ class DrawingWindow(QWidget):
             painter.drawLine(from_point, to_point)
             painter.end()
             self.drawing_label.setPixmap(self.pixmap)
-    
+
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
             if self.title_bar.underMouse():
                 self.dragging = True
                 self.offset = event.pos()
             elif self.drawing_label.underMouse():
-                self.last_point = event.pos() - self.drawing_label.pos()
-    
+                if self.bucket_mode:
+                    self.bucket_fill(event.pos() - self.drawing_label.pos())
+                else:
+                    self.last_point = event.pos() - self.drawing_label.pos()
+
     def mouseMoveEvent(self, event):
         if self.dragging:
             self.move(event.globalPos() - self.offset)
@@ -357,16 +386,61 @@ class DrawingWindow(QWidget):
             current_point = event.pos() - self.drawing_label.pos()
             self.draw_line(self.last_point, current_point)
             self.last_point = current_point
-    
+
     def mouseReleaseEvent(self, event):
         if event.button() == Qt.LeftButton:
             self.dragging = False
             self.last_point = None
-    
+
     def clear_drawing(self):
         if not self.pixmap.isNull():
             self.pixmap.fill(Qt.transparent)
             self.drawing_label.setPixmap(self.pixmap)
+
+    def bucket_fill(self, pos):
+        x, y = int(pos.x()), int(pos.y())
+        if x < 0 or y < 0 or x >= self.pixmap.width() or y >= self.pixmap.height():
+            return
+
+        image = self.pixmap.toImage()
+        target_color = image.pixelColor(x, y)
+        fill_color = self.pen.color()
+
+        if target_color == fill_color:
+            return
+
+        width = image.width()
+        height = image.height()
+
+        stack = [(x, y)]
+        visited = set()
+        filled_pixels = 0
+        area = width * height
+        FILL_PIXEL_LIMIT = max(10000, int(area * 0.15))
+
+        while stack:
+            cx, cy = stack.pop()
+            if (cx, cy) in visited:
+                continue
+            if cx < 0 or cy < 0 or cx >= width or cy >= height:
+                continue
+            current_color = image.pixelColor(cx, cy)
+            if current_color != target_color:
+                continue
+            image.setPixelColor(cx, cy, fill_color)
+            visited.add((cx, cy))
+            filled_pixels += 1
+            if filled_pixels > FILL_PIXEL_LIMIT:
+                break
+            stack.extend([
+                (cx + 1, cy),
+                (cx - 1, cy),
+                (cx, cy + 1),
+                (cx, cy - 1)
+            ])
+
+        self.pixmap.convertFromImage(image)
+        self.drawing_label.setPixmap(self.pixmap)
 
 class ApplicationManager:
     @staticmethod
@@ -411,7 +485,6 @@ class ApplicationManager:
             x = screen_geometry.x() + (screen_geometry.width() - window_width) // 2
             y = screen_geometry.y() + (screen_geometry.height() - window_height) // 2
 
-            # Restore window if minimized
             win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
             win32gui.SetWindowPos(hwnd, win32con.HWND_TOP, x, y, window_width, window_height, win32con.SWP_SHOWWINDOW)
             win32gui.SetForegroundWindow(hwnd)
