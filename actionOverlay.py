@@ -3,7 +3,7 @@ import os
 import pyautogui
 import win32gui
 import win32con
-from PyQt5.QtCore import Qt, QPoint, QRect
+from PyQt5.QtCore import Qt, QPoint, QRect, QObject
 from PyQt5.QtWidgets import QSlider
 import datetime
 from PyQt5.QtWidgets import QFileDialog
@@ -69,20 +69,16 @@ class DrawingWindow(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
 
         self.title_bar = QWidget(self)
-        self.title_bar.setFixedHeight(30)
+        self.title_bar.setFixedHeight(32)
         self.title_bar.setStyleSheet("background-color: #333;")
 
         title_layout = QHBoxLayout(self.title_bar)
         title_layout.setContentsMargins(5, 0, 5, 0)
 
-        self.title_label = QLabel("actionOverlay - Drawing Window")
-        self.title_label.setStyleSheet("color: white;")
-        title_layout.addWidget(self.title_label)
-
         title_layout.addStretch()
 
         self.bucket_button = QPushButton("🪣")
-        self.bucket_button.setFixedSize(24, 24)
+        self.bucket_button.setFixedSize(32, 32)
         self.bucket_button.setCheckable(True)
         self.bucket_button.setToolTip("Fill Bucket")
         self.bucket_button.setStyleSheet("""
@@ -102,8 +98,35 @@ class DrawingWindow(QWidget):
         self.bucket_button.clicked.connect(self.set_bucket_mode)
         title_layout.addWidget(self.bucket_button)
 
+        self.color_picker_button = QPushButton("🎨")
+        self.color_picker_button.setFixedSize(32, 32)
+        self.color_picker_button.setToolTip("Pick color from anywhere")
+        self.color_picker_button.setStyleSheet("""
+            QPushButton {
+                background-color: #eee;
+                color: #222;
+                border: 2px solid #222;
+                border-radius: 4px;
+                font-size: 16px;
+            }
+            QPushButton:pressed {
+                background-color: #fff;
+                border: 2px solid #2196F3;
+                color: #2196F3;
+            }
+        """)
+        self.color_picker_button.clicked.connect(self.pick_color_from_screen)
+        title_layout.addWidget(self.color_picker_button)
+
+        # sepparator
+        sep = QWidget()
+        sep.setFixedWidth(2)
+        sep.setFixedHeight(24)
+        sep.setStyleSheet("background-color: #fff; margin-left: 6px; margin-right: 6px; border-radius: 1px;")
+        title_layout.addWidget(sep)
+
         self.eraser_button = QPushButton("⎚")
-        self.eraser_button.setFixedSize(24, 24)
+        self.eraser_button.setFixedSize(32, 32)
         self.eraser_button.setCheckable(True)
         self.eraser_button.setToolTip("Eraser")
         self.eraser_button.setStyleSheet("""
@@ -126,21 +149,28 @@ class DrawingWindow(QWidget):
         self.color_buttons = []
         color_defs = [
             ("#FFD600", "yellow"),
-            ("#000000", "black"),
-            ("#FFFFFF", "white"),
-            ("#888888", "gray"),
-            ("#2196F3", "blue"),
+            ("#FF9800", "orange"),
             ("#F44336", "red"),
+            ("#B71C1C", "dark red"),
             ("#E91E63", "pink"),
+            ("#880E4F", "dark pink"),
             ("#9C27B0", "purple"),
-            ("#4CAF50", "green"),
+            ("#4A148C", "dark purple"),
+            ("#0D47A1", "dark blue"),
             ("#00BCD4", "cyan"),
+            ("#006064", "dark cyan"),
+            ("#4CAF50", "green"),
+            ("#1B5E20", "dark green"),
+            ("#8D5524", "brown"),
+            ("#212121", "dark gray"),
+            ("#FFFFFF", "white"),
+            ("#000000", "black"),
         ]
         self.pen = QPen(QColor(255, 255, 255), 3, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
 
         def make_color_btn(color, tooltip):
             btn = QPushButton()
-            btn.setFixedSize(22, 22)
+            btn.setFixedSize(30, 30)
             btn.setStyleSheet(f"""
                 QPushButton {{
                     background-color: {color};
@@ -164,26 +194,41 @@ class DrawingWindow(QWidget):
             self.color_btn_group.append(btn)
         self.color_btn_group[2].setChecked(True)
 
+        # sepparator
+        sep = QWidget()
+        sep.setFixedWidth(2)
+        sep.setFixedHeight(24)
+        sep.setStyleSheet("background-color: #fff; margin-left: 6px; margin-right: 6px; border-radius: 1px;")
+        title_layout.addWidget(sep)
+
         self.thickness_slider = QSlider(Qt.Horizontal)
         self.thickness_slider.setMinimum(1)
-        self.thickness_slider.setMaximum(20)
+        self.thickness_slider.setMaximum(100)
         self.thickness_slider.setValue(3)
-        self.thickness_slider.setFixedWidth(80)
+        self.thickness_slider.setFixedWidth(100)
         self.thickness_slider.setToolTip("Pen thickness")
         self.thickness_slider.setStyleSheet("""
             QSlider::groove:horizontal {
                 border: 1px solid #444;
-                height: 6px;
-                background: #222;
+                height: 22px;
+                background: transparent;
                 margin: 0px;
-                border-radius: 3px;
+                border-radius: 4px;
+            }
+            QSlider::sub-page:horizontal {
+                background: #2196F3;
+                border-radius: 4px;
+            }
+            QSlider::add-page:horizontal {
+                background: #222;
+                border-radius: 4px;
             }
             QSlider::handle:horizontal {
                 background: #fff;
-                border: 1px solid #2196F3;
-                width: 14px;
-                margin: -4px 0;
-                border-radius: 7px;
+                border: 2px solid #2196F3;
+                width: 22px;
+                margin: -7px 0;
+                border-radius: 4px;
             }
         """)
         self.thickness_slider.valueChanged.connect(self.set_pen_thickness)
@@ -192,7 +237,7 @@ class DrawingWindow(QWidget):
         title_layout.addStretch()
 
         self.close_button = QPushButton("✕")
-        self.close_button.setFixedSize(20, 20)
+        self.close_button.setFixedSize(30, 30)
         self.close_button.setStyleSheet("""
             QPushButton {
                 color: white;
@@ -207,8 +252,8 @@ class DrawingWindow(QWidget):
         """)
         self.close_button.clicked.connect(self.close)
 
-        self.clear_button = QPushButton("Clear")
-        self.clear_button.setFixedSize(60, 20)
+        self.clear_button = QPushButton("CLR")
+        self.clear_button.setFixedSize(40, 30)
         self.clear_button.setStyleSheet("""
             QPushButton {
                 color: white;
@@ -221,10 +266,11 @@ class DrawingWindow(QWidget):
                 border-radius: 2px;
             }
         """)
+        self.clear_button.setToolTip("Clear the drawing")
         self.clear_button.clicked.connect(self.clear_drawing)
 
-        self.print_screen_button = QPushButton("⌜⌟ Print screen", self)
-        self.print_screen_button.setFixedSize(90, 20)
+        self.print_screen_button = QPushButton("⌜⌟", self)
+        self.print_screen_button.setFixedSize(30, 30)
         self.print_screen_button.setStyleSheet("""
             QPushButton {
                 color: white;
@@ -240,8 +286,8 @@ class DrawingWindow(QWidget):
         self.print_screen_button.setToolTip("Print Screen")
         self.print_screen_button.clicked.connect(self.take_screenshot)
 
-        self.download_button = QPushButton("Download", self)
-        self.download_button.setFixedSize(90, 20)
+        self.download_button = QPushButton("↓", self)
+        self.download_button.setFixedSize(30, 30)
         self.download_button.setStyleSheet("""
             QPushButton {
                 color: white;
@@ -281,6 +327,77 @@ class DrawingWindow(QWidget):
 
         self.eraser_mode = False
         self.bucket_mode = False
+
+    def pick_color_from_screen(self):
+        QApplication.processEvents()
+        self._color_picker_active = True
+
+        self.color_picker_button.setStyleSheet("""
+            QPushButton {
+                background-color: #eee;
+                color: #222;
+                border: 2px solid #FFA500;
+                border-radius: 4px;
+                font-size: 16px;
+            }
+            QPushButton:pressed {
+                background-color: #fff;
+                border: 2px solid #2196F3;
+                color: #2196F3;
+            }
+        """)
+
+        def on_click(event):
+            if self._color_picker_active and event.button() == Qt.LeftButton:
+                pos = QCursor.pos()
+                color = self.get_pixel_color(pos)
+                if color:
+                    self.set_pen_color(color.name())
+                    for btn in self.color_btn_group:
+                        btn.setChecked(False)
+                    self.eraser_button.setChecked(False)
+                    self.color_picker_button.setStyleSheet(f"""
+                        QPushButton {{
+                            background-color: {color.name()};
+                            color: #222;
+                            border: 2px solid #222;
+                            border-radius: 4px;
+                            font-size: 16px;
+                        }}
+                        QPushButton:pressed {{
+                            background-color: #fff;
+                            border: 2px solid #2196F3;
+                            color: #2196F3;
+                        }}
+                    """)
+                self._color_picker_active = False
+                QApplication.instance().removeEventFilter(self._mouse_event_filter)
+                self.activateWindow()
+            return False
+
+        class MouseEventFilter(QObject):
+            def eventFilter(self, obj, event):
+                if event.type() == QMouseEvent.MouseButtonPress:
+                    return on_click(event)
+                return False
+
+        self._mouse_event_filter = MouseEventFilter()
+        QApplication.instance().installEventFilter(self._mouse_event_filter)
+
+    def get_pixel_color(self, pos):
+        screen = QApplication.screenAt(pos)
+        if not screen:
+            screen = QApplication.primaryScreen()
+        if not screen:
+            return None
+        pixmap = screen.grabWindow(0, pos.x(), pos.y(), 1, 1)
+        if pixmap.isNull():
+            return None
+        image = pixmap.toImage()
+        if image.isNull():
+            return None
+        color = QColor(image.pixel(0, 0))
+        return color
 
     def save_as_png(self):
         if self.pixmap.isNull():
@@ -348,19 +465,34 @@ class DrawingWindow(QWidget):
             self.setGeometry(geometry)
         event.accept()
 
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            if self.title_bar.underMouse():
+                slider_rect = self.thickness_slider.geometry()
+                slider_pos = self.thickness_slider.mapToGlobal(slider_rect.topLeft())
+                slider_rect_global = QRect(slider_pos, self.thickness_slider.size())
+                if not slider_rect_global.contains(event.globalPos()):
+                    self.dragging = True
+                    self.offset = event.pos()
+            elif self.drawing_label.underMouse():
+                if self.bucket_mode:
+                    self.bucket_fill(event.pos() - self.drawing_label.pos())
+                else:
+                    self.last_point = event.pos() - self.drawing_label.pos()
+
+    def mouseMoveEvent(self, event):
+        if self.dragging:
+            self.move(event.globalPos() - self.offset)
+        elif self.last_point is not None and event.buttons() & Qt.LeftButton:
+            current_point = event.pos() - self.drawing_label.pos()
+            self.draw_line(self.last_point, current_point)
+            self.last_point = current_point
+
     def mouseReleaseEvent(self, event):
-        if event.button() == Qt.LeftButton and self.dragging:
+        if event.button() == Qt.LeftButton:
             self.dragging = False
-            center = self.geometry().center()
-            screen = QApplication.screenAt(center)
-            if screen:
-                geometry = screen.geometry()
-                self.setGeometry(geometry)
             self.last_point = None
-        else:
-            self.last_point = None
-        super().mouseReleaseEvent(event)
-    
+
     def update_drawing_surface(self, event):
         if self.pixmap.size() != self.drawing_label.size():
             new_pixmap = QPixmap(self.drawing_label.size())
@@ -395,30 +527,6 @@ class DrawingWindow(QWidget):
             painter.drawLine(from_point, to_point)
             painter.end()
             self.drawing_label.setPixmap(self.pixmap)
-
-    def mousePressEvent(self, event):
-        if event.button() == Qt.LeftButton:
-            if self.title_bar.underMouse():
-                self.dragging = True
-                self.offset = event.pos()
-            elif self.drawing_label.underMouse():
-                if self.bucket_mode:
-                    self.bucket_fill(event.pos() - self.drawing_label.pos())
-                else:
-                    self.last_point = event.pos() - self.drawing_label.pos()
-
-    def mouseMoveEvent(self, event):
-        if self.dragging:
-            self.move(event.globalPos() - self.offset)
-        elif self.last_point is not None and event.buttons() & Qt.LeftButton:
-            current_point = event.pos() - self.drawing_label.pos()
-            self.draw_line(self.last_point, current_point)
-            self.last_point = current_point
-
-    def mouseReleaseEvent(self, event):
-        if event.button() == Qt.LeftButton:
-            self.dragging = False
-            self.last_point = None
 
     def clear_drawing(self):
         if not self.pixmap.isNull():
@@ -519,6 +627,7 @@ class ApplicationManager:
             win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
             win32gui.SetWindowPos(hwnd, win32con.HWND_TOP, x, y, window_width, window_height, win32con.SWP_SHOWWINDOW)
             win32gui.SetForegroundWindow(hwnd)
+            win32gui.MoveWindow(hwnd, screen_geometry.x(), screen_geometry.y(), screen_geometry.width(), screen_geometry.height(), True)
     
     @staticmethod
     def close_window(hwnd):
@@ -574,7 +683,7 @@ class OverlayButton(QWidget):
         
         for key, name in self.shortcuts.items():
             btn = QPushButton(name, self)
-            btn.setFixedSize(90, 50)
+            btn.setFixedSize(90, 40)
             btn.setStyleSheet(dark_button_style)
             btn.clicked.connect(lambda _, k=key: self.trigger_shortcut(k))
             btn.hide()
@@ -582,7 +691,7 @@ class OverlayButton(QWidget):
             self.shortcuts_layout.addWidget(btn)
 
         self.apps_button = QPushButton("apps", self)
-        self.apps_button.setFixedSize(90, 50)
+        self.apps_button.setFixedSize(90, 40)
         self.apps_button.setStyleSheet(dark_button_style)
         self.apps_button.clicked.connect(self.toggle_apps_list)
         self.apps_button.setStyleSheet("""
@@ -612,8 +721,8 @@ class OverlayButton(QWidget):
         self.apps_list_widget.setFixedWidth(300)
         self.apps_list_widget.hide()
 
-        self.print_screen_button = QPushButton("⎙ print screen", self)
-        self.print_screen_button.setFixedSize(90, 50)
+        self.print_screen_button = QPushButton("⌜⌟ print screen", self)
+        self.print_screen_button.setFixedSize(90, 40)
         self.print_screen_button.setStyleSheet("""
             QPushButton {
                 background-color: #286;
@@ -634,7 +743,7 @@ class OverlayButton(QWidget):
         self.shortcuts_layout.addWidget(self.print_screen_button)
 
         self.draw_button = QPushButton("✎ draw", self)
-        self.draw_button.setFixedSize(90, 50)
+        self.draw_button.setFixedSize(90, 40)
         self.draw_button.setStyleSheet("""
             QPushButton {
                 background-color: #228;
@@ -655,7 +764,7 @@ class OverlayButton(QWidget):
         self.shortcuts_layout.addWidget(self.draw_button)
 
         self.quit_button = QPushButton("✖ quit", self)
-        self.quit_button.setFixedSize(90, 50)
+        self.quit_button.setFixedSize(90, 40)
         self.quit_button.setStyleSheet("""
             QPushButton {
                 background-color: #922;
@@ -745,12 +854,12 @@ class OverlayButton(QWidget):
                 border: 1px solid #444;
                 color: white;
             """)
-            label.setFixedSize(180, 50)
+            label.setFixedSize(180, 40)
             window_layout.addWidget(label)
             
             if "Task Manager" not in title:
                 bring_btn = QPushButton("⇲")
-                bring_btn.setFixedSize(50, 50)
+                bring_btn.setFixedSize(40, 40)
                 bring_btn.setStyleSheet("""
                     QPushButton {
                         background-color: #286;
@@ -768,7 +877,7 @@ class OverlayButton(QWidget):
             
             if "Task Manager" not in title:
                 close_btn = QPushButton("✕")
-                close_btn.setFixedSize(50, 50)
+                close_btn.setFixedSize(40, 40)
                 close_btn.setStyleSheet("""
                     QPushButton {
                         background-color: #922;
@@ -789,7 +898,7 @@ class OverlayButton(QWidget):
                 window_layout.addWidget(close_btn)
             else:
                 disabled_btn = QPushButton("No permission")
-                disabled_btn.setFixedSize(110, 50)
+                disabled_btn.setFixedSize(110, 40)
                 disabled_btn.setStyleSheet("""
                     QPushButton {
                         background-color: #2c2c2c;
