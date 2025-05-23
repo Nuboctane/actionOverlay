@@ -327,8 +327,15 @@ class DrawingWindow(QWidget):
 
         self.eraser_mode = False
         self.bucket_mode = False
+        self._color_picker_active = False
 
     def pick_color_from_screen(self):
+        # If bucket mode is active, deactivate it
+        if self.bucket_button.isChecked():
+            self.bucket_button.setChecked(False)
+            self.set_bucket_mode()
+        if self._color_picker_active:
+            return
         QApplication.processEvents()
         self._color_picker_active = True
 
@@ -431,6 +438,27 @@ class DrawingWindow(QWidget):
 
     def set_bucket_mode(self):
         if self.bucket_button.isChecked():
+            # If color picker is active, deactivate it
+            if self._color_picker_active:
+                self._color_picker_active = False
+                self.color_picker_button.setStyleSheet("""
+                    QPushButton {
+                        background-color: #eee;
+                        color: #222;
+                        border: 2px solid #222;
+                        border-radius: 4px;
+                        font-size: 16px;
+                    }
+                    QPushButton:pressed {
+                        background-color: #fff;
+                        border: 2px solid #2196F3;
+                        color: #2196F3;
+                    }
+                """)
+                try:
+                    QApplication.instance().removeEventFilter(self._mouse_event_filter)
+                except Exception:
+                    pass
             self.bucket_mode = True
         else:
             self.bucket_mode = False
