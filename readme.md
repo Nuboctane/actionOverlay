@@ -12,3 +12,7 @@
 ### Usage
 - drag  ○  button to move overlay
 - ○  open/hide overlay
+
+### TODO
+- add undo, redo buttons to draw window
+- split up the main source .py file to smaller files
